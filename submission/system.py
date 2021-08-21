@@ -5,15 +5,16 @@ Registration # 160153363
 
 version: v1.0
 """
+import difflib
 import numpy as np
-import utils.utils as utils
-from scipy import ndimage
-import scipy
-import cv2
-from skimage.util import random_noise
 import operator
-from nltk.corpus import brown
+import scipy
 from autocorrect import spell
+from nltk.corpus import brown
+from scipy import ndimage
+
+import utils.utils as utils
+
 
 def reduce_dimensions(features, model, mode="Train", split=0, start=1, end=60):
     """Dimension reducation function
@@ -35,7 +36,7 @@ def reduce_dimensions(features, model, mode="Train", split=0, start=1, end=60):
     In case of testing:
         Features with reduced dimensions to 10
     """
-    if (mode == "Train"): #dimensionality reduction for train data
+    if mode == "Train":  # dimensionality reduction for train data
         # Generate PCA
         # grab training data and their labels from model
         labels_train_clean = np.array(model['labels_train'])[0:split + 1]
@@ -46,7 +47,7 @@ def reduce_dimensions(features, model, mode="Train", split=0, start=1, end=60):
         # Compute 40 principal components
         covx_clean = np.cov(clean, rowvar=0)
         N_clean = covx_clean.shape[0]
-        w_clean, v_clean = scipy.linalg.eigh(covx_clean, eigvals=(N_clean-end, N_clean-start))
+        w_clean, v_clean = scipy.linalg.eigh(covx_clean, eigvals=(N_clean - end, N_clean - start))
         # project data onto principal components
         pca_data_clean = np.dot((clean - np.mean(clean)), v_clean)
         # choose a subset from the above principal components
@@ -58,7 +59,7 @@ def reduce_dimensions(features, model, mode="Train", split=0, start=1, end=60):
         # Compute 40 principal components
         covx_noisy = np.cov(noisy, rowvar=0)
         N_noisy = covx_noisy.shape[0]
-        w_noisy, v_noisy = scipy.linalg.eigh(covx_noisy, eigvals=(N_noisy-end, N_noisy-start))
+        w_noisy, v_noisy = scipy.linalg.eigh(covx_noisy, eigvals=(N_noisy - end, N_noisy - start))
         # project data onto principal components
         pca_data_noisy = np.dot((noisy - np.mean(noisy)), v_noisy)
         # choose a subset from the above principal components
@@ -66,19 +67,20 @@ def reduce_dimensions(features, model, mode="Train", split=0, start=1, end=60):
         subset_noisy = reduce_principal_components(pca_data_noisy, labels_train_noisy)
         # given the select best principal components, add to the model
         model['v_noisy'] = v_noisy[:, subset_noisy].tolist()
-        return pca_data_clean[:, subset_clean], pca_data_noisy[:, subset_noisy] #return the selected principal components on the data
-    else: #dimensionality reduction for test data
+        return pca_data_clean[:, subset_clean], pca_data_noisy[:, subset_noisy]  # return the selected principal components on the data
+    else:  # dimensionality reduction for test data
         # compute how noisy
         count = 0
         for i in range(features.shape[0]):
             count += np.sum(features[i])
-        determine =  count/(features.shape[0] * features.shape[1])
-        if (determine > 240): # considered clean
+        determine = count / (features.shape[0] * features.shape[1])
+        if determine > 240:  # considered clean
             v = np.array(model['v_clean'])
             return np.dot((features - np.mean(features)), v)
-        else: #considered noisy
+        else:  # considered noisy
             v = np.array(model['v_noisy'])
             return np.dot((features - np.mean(features)), v)
+
 
 def extract_char_given(fvectors_train, labels_train, label):
     """Extract character given
@@ -96,9 +98,10 @@ def extract_char_given(fvectors_train, labels_train, label):
     """
     data = []
     for i in range(labels_train.shape[0]):
-        if (labels_train[i]==label):
-            data.append(fvectors_train[i,:])
+        if labels_train[i] == label:
+            data.append(fvectors_train[i, :])
     return np.array(data)
+
 
 def divergence(class1, class2, show=False):
     """Computs a vector of 1-D Divergence
@@ -120,15 +123,14 @@ def divergence(class1, class2, show=False):
     if (show):
         print("Mean1: ", m1)
         print("Mean2: ", m2)
-        print("Var1: ", var1)
-        print("Var2: ", var2)
 
     # Plug mean and variances into the formula for 1-D divergence.
     # (Note that / and * are being used to compute multiple 1-D
     #  divergences without the need for a loop)
-    d12 = 0.5 * (v1 / v2 + v2 / v1 - 2) + 0.5 * ( m1 - m2 ) * (m1 - m2) * (1.0 / v1 + 1.0 / v2)
+    d12 = 0.5 * (v1 / v2 + v2 / v1 - 2) + 0.5 * (m1 - m2) * (m1 - m2) * (1.0 / v1 + 1.0 / v2)
 
     return d12
+
 
 def reduce_principal_components(train_data, train_labels):
     """Reduce principal components function
@@ -200,7 +202,7 @@ def reduce_principal_components(train_data, train_labels):
     scoreMax = -1
     for i in repeated_features:
         score = classify_training(train_data, train_labels, [i])
-        if (score > scoreMax):
+        if score > scoreMax:
             a = i
             scoreMax = score
     scoreMax = -1
@@ -214,59 +216,60 @@ def reduce_principal_components(train_data, train_labels):
     for i in repeated_features:
         if not (i == a or i == b):
             score = classify_training(train_data, train_labels, [a, b, i])
-            if (score > scoreMax):
+            if score > scoreMax:
                 c = i
                 scoreMax = score
     scoreMax = -1
     for i in repeated_features:
         if not (i == a or i == b or i == c):
             score = classify_training(train_data, train_labels, [a, b, c, i])
-            if (score > scoreMax):
+            if score > scoreMax:
                 d = i
                 scoreMax = score
     scoreMax = -1
     for i in repeated_features:
         if not (i == a or i == b or i == c or i == d):
             score = classify_training(train_data, train_labels, [a, b, c, d, i])
-            if (score > scoreMax):
+            if score > scoreMax:
                 e = i
                 scoreMax = score
     scoreMax = -1
     for i in repeated_features:
         if not (i == a or i == b or i == c or i == d or i == e):
             score = classify_training(train_data, train_labels, [a, b, c, d, e, i])
-            if (score > scoreMax):
+            if score > scoreMax:
                 f = i
                 scoreMax = score
     scoreMax = -1
     for i in repeated_features:
         if not (i == a or i == b or i == c or i == d or i == e or i == f):
             score = classify_training(train_data, train_labels, [a, b, c, d, e, f, i])
-            if (score > scoreMax):
+            if score > scoreMax:
                 g = i
                 scoreMax = score
     scoreMax = -1
     for i in repeated_features:
         if not (i == a or i == b or i == c or i == d or i == e or i == f or i == g):
             score = classify_training(train_data, train_labels, [a, b, c, d, e, f, g, i])
-            if (score > scoreMax):
+            if score > scoreMax:
                 h = i
                 scoreMax = score
     scoreMax = -1
     for i in repeated_features:
         if not (i == a or i == b or i == c or i == d or i == e or i == f or i == g or i == h):
             score = classify_training(train_data, train_labels, [a, b, c, d, e, f, g, h, i])
-            if (score > scoreMax):
+            if score > scoreMax:
                 x = i
                 scoreMax = score
     scoreMax = -1
     for i in repeated_features:
         if not (i == a or i == b or i == c or i == d or i == e or i == f or i == g or i == h or i == x):
             score = classify_training(train_data, train_labels, [a, b, c, d, e, f, g, h, x, i])
-            if (score > scoreMax):
+            if score > scoreMax:
                 y = i
                 scoreMax = score
     return [a, b, c, d, e, f, g, h, x, y]
+
 
 def classify_training(data, labels, features):
     """Nearest neighbour classification.
@@ -289,10 +292,10 @@ def classify_training(data, labels, features):
     train_labels = labels[0:split]
     test_labels = labels[split:data.shape[0]]
     # Nnearest neighbor
-    x= np.dot(test, train.transpose())
+    x = np.dot(test, train.transpose())
     modtest = np.sqrt(np.sum(test * test, axis=1))
     modtrain = np.sqrt(np.sum(train * train, axis=1))
-    dist = x / np.outer(modtest, modtrain.transpose()); # cosine distance
+    dist = x / np.outer(modtest, modtrain.transpose())  # cosine distance
     # Find nearest neighbors
     nearest = np.argmax(dist, axis=1)
     # Compute labels
@@ -300,11 +303,13 @@ def classify_training(data, labels, features):
     # Return score
     return (100.0 * sum(test_labels[:] == label)) / label.shape[0]
 
+
 def get_bounding_box_size(images):
     """Compute bounding box size given list of images."""
     height = max(image.shape[0] for image in images)
     width = max(image.shape[1] for image in images)
     return height, width
+
 
 def correct_errors(page, labels, bboxes, model, use=False, version='One'):
     """Error correction function
@@ -342,16 +347,16 @@ def correct_errors(page, labels, bboxes, model, use=False, version='One'):
     Returns:
     Labels after being subjected to error correction, if any
     """
-    if (use): #Do some error correction
+    if use:  # Do some error correction
         all_words, current_labels = divide_to_words(labels, bboxes)
-        if (version=='One'): #Uses nltk and autocorrect libraries
+        if version == 'One':  # Uses nltk and autocorrect libraries
             english = set(brown.words())
             # Check if word is in set
             for i in range(len(all_words)):
                 if not (all_words[i] in english):
                     old = all_words[i]
                     all_words[i] = spell(all_words[i])
-                    if (len(old) < len(all_words[i])):
+                    if len(old) < len(all_words[i]):
                         for j in range(len(old)):
                             if old[j] != all_words[i][j]:
                                 indices = current_labels[i]
@@ -361,16 +366,16 @@ def correct_errors(page, labels, bboxes, model, use=False, version='One'):
                             if old[j] != all_words[i][j]:
                                 indices = current_labels[i]
                                 labels[int(indices[j])] = all_words[i][j]
-        else: # Version 2 (Slower, less-accurate and required dictionary in model)
-            if 'english' in model: #checks that model has the dictionary
+        else:  # Version 2 (Slower, less-accurate and required dictionary in model)
+            if 'english' in model:  # checks that model has the dictionary
                 english = model['english']
                 potential_match = difflib.get_close_matches(all_words[i], english)
-                if (len(all_words[i]) > 1 and len(potential_match) > 0 and potential_match[0] != all_words[i]):
+                if len(all_words[i]) > 1 and len(potential_match) > 0 and potential_match[0] != all_words[i]:
                     print('checking word ', all_words[i], ' potential matches')
                     for j in potential_match:
-                        difference = sum (j != all_words[i] for i in range(len(j)))
-                        if (difference == 1):
-                            if (len(all_words[i]) < len(potential_match[j])):
+                        difference = sum(j != all_words[i] for i in range(len(j)))
+                        if difference == 1:
+                            if len(all_words[i]) < len(potential_match[j]):
                                 for k in range(len(all_words[i])):
                                     if all_words[i][k] != potential_match[j][k]:
                                         indices = current_labels[i]
@@ -381,6 +386,7 @@ def correct_errors(page, labels, bboxes, model, use=False, version='One'):
                                         indices = current_labels[i]
                                         labels[int(indices[k])] = all_words[i][k]
     return labels
+
 
 def divide_to_words(labels, bboxes):
     """Divide to Words function
@@ -403,17 +409,18 @@ def divide_to_words(labels, bboxes):
     current_word = labels[0]
     current_label = ['0']
     for i in range(1, labels.shape[0]):
-        if (bboxes[i, 0] - bboxes[i-1, 2] < 7):
-            if (labels[i] != '.' and labels[i] != ',' and labels[i] != ':' and labels[i] != '!' and labels[i] != '?' and labels[i] != ';'):
+        if bboxes[i, 0] - bboxes[i - 1, 2] < 7:
+            if labels[i] != '.' and labels[i] != ',' and labels[i] != ':' and labels[i] != '!' and labels[i] != '?' and labels[i] != ';':
                 current_word += labels[i]
                 current_label.append(str(i))
         else:
             all_words.append(current_word)
             all_labels.append(current_label)
-            if (labels[i] != '.' and labels[i] != ',' and labels[i] != ':' and labels[i] != '!' and labels[i] != '?' and labels[i] != ';'):
+            if labels[i] != '.' and labels[i] != ',' and labels[i] != ':' and labels[i] != '!' and labels[i] != '?' and labels[i] != ';':
                 current_word = labels[i]
                 current_label = [str(i)]
     return all_words, all_labels
+
 
 def images_to_feature_vectors(images, bbox_size=None):
     """Reformat characters into feature vectors.
@@ -444,6 +451,7 @@ def images_to_feature_vectors(images, bbox_size=None):
         fvectors[i, :] = padded_image.reshape(1, nfeatures)
     return fvectors
 
+
 # The three functions below this point are called by train.py
 # and evaluate.py and need to be provided.
 def process_training_data(train_page_names, noise='saltandpepper'):
@@ -471,11 +479,11 @@ def process_training_data(train_page_names, noise='saltandpepper'):
     # combine labels differently to match the way we use train data
     model_data['labels_train'] = np.concatenate((labels_train[0::2], labels_train[1::2])).tolist()
     print('- Adding noise to a half of the data')
-    if (noise == 'gaussian'):
+    if noise == 'gaussian':
         # Gaussian noise
         print('-- Gaussian noise')
         for i in range(noisy.shape[0]):
-            gauss = np.random.normal(0, 0.1**0.5, (noisy[i].shape[0])).reshape(noisy[i].shape[0])
+            gauss = np.random.normal(0, 0.1 ** 0.5, (noisy[i].shape[0])).reshape(noisy[i].shape[0])
             noisy[i] += gauss
     else:
         # Salt and pepper noise
@@ -485,22 +493,24 @@ def process_training_data(train_page_names, noise='saltandpepper'):
             copy = noisy[i]
             # Convert to floats between and inclusive to 0 and 1
             copy.astype(np.float16, copy=False)
-            copy = np.multiply(copy, (1/255))
+            copy = np.multiply(copy, (1 / 255))
             # Create some noise
             noise = np.random.randint(20, size=(copy.shape[0]))
             # When the noise has a zero, add a pepper to the copy
-            copy = np.where(noise==0, 0, copy) # pepper (black is = 0)
+            copy = np.where(noise == 0, 0, copy)  # pepper (black is = 0)
             # When the noise has a value equal to the top, add a salt to the copy
-            copy = np.where(noise==(19), 1, copy) # salt (white is = 1)
+            copy = np.where(noise == (19), 1, copy)  # salt (white is = 1)
             # Convert back to values out of 255 (RGB)
             noisy[i] = np.multiply(copy, (255))
 
     print('- Reducing to 10 dimensions')
-    fvectors_train_clean, fvectors_train_noisy = reduce_dimensions(np.concatenate((clean, noisy), axis=0), model_data, "Train", noisy.shape[0])
+    fvectors_train_clean, fvectors_train_noisy = reduce_dimensions(np.concatenate((clean, noisy), axis=0), model_data,
+                                                                   "Train", noisy.shape[0])
     # add training clean and noisy samples together and save in model
     model_data['fvectors_train'] = np.concatenate((fvectors_train_clean, fvectors_train_noisy)).tolist()
 
     return model_data
+
 
 def load_test_page(page_name, model):
     """Load test data page.
@@ -522,27 +532,28 @@ def load_test_page(page_name, model):
     count = 0
     for i in range(fvectors_test.shape[0]):
         count += np.sum(fvectors_test[i])
-    determine =  count/(fvectors_test.shape[0] * fvectors_test.shape[1])
+    determine = count / (fvectors_test.shape[0] * fvectors_test.shape[1])
     # denoise images by applying median filter
-    if (determine < 239.0):
+    if determine < 239.0:
         for i in range(fvectors_test.shape[0]):
             fvectors_test[i] = ndimage.median_filter(fvectors_test[i], 3)
     # save the fact it was noisy if it was
     if 'test_noisy' in model:
         x = np.array(model['test_noisy'])
-        if (determine < 239.0):
+        if determine < 239.0:
             x = np.append(x, True)
         else:
             x = np.append(x, False)
         model['test_noisy'] = x.tolist()
     else:
-        if (determine < 239.0):
+        if determine < 239.0:
             model['test_noisy'] = [True]
         else:
             model['test_noisy'] = [False]
     # Perform the dimensionality reduction.
     fvectors_test_reduced = reduce_dimensions(fvectors_test, model, "Test")
     return fvectors_test_reduced
+
 
 def classify_page(page, model):
     """Classifier.
@@ -574,15 +585,15 @@ def classify_page(page, model):
     x = np.dot(page, fvectors_train.transpose())
     modtest = np.sqrt(np.sum(page * page, axis=1))
     modtrain = np.sqrt(np.sum(fvectors_train * fvectors_train, axis=1))
-    dist = x / np.outer(modtest, modtrain.transpose()); # cosine distance
+    dist = x / np.outer(modtest, modtrain.transpose())  # cosine distance
     # Check noise determine from the model
     m = np.array(model['test_noisy'])
     determine_noisy = m[0]
-    new_m = np.delete(m, 0) # delete from the model
-    model['test_noisy'] = new_m.tolist() # save new model
-    if (determine_noisy): #Noisy page
+    new_m = np.delete(m, 0)  # delete from the model
+    model['test_noisy'] = new_m.tolist()  # save new model
+    if determine_noisy:  # Noisy page
         # Calculate K
-        k = int((fvectors_train.shape[0] ** 0.5)/2)
+        k = int((fvectors_train.shape[0] ** 0.5) / 2)
         # Find k-nearest neighbors
         nearest_k = np.argsort(-dist, axis=1, kind='quicksort')[:, 0:k]
         # k-nearest neighbor
@@ -596,7 +607,7 @@ def classify_page(page, model):
                 else:
                     potential_labels[label] = 1
             sort_list = sorted(potential_labels.items(), key=operator.itemgetter(1), reverse=True)
-            labels.append(sort_list[0][0]) #The actual label
+            labels.append(sort_list[0][0])  # The actual label
         return np.array(labels)
     else:
         # nearest-neighbor

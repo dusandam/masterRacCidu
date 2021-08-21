@@ -1,0 +1,6 @@
+numpy===1.21.2
+scipy==1.7.1
+autocorrect==2.5.0
+nltk==3.6.2
+image==1.5.33
+flake8==3.9.2

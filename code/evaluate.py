@@ -52,7 +52,7 @@ def evaluate(testset):
 
     # Construct a list of all the test set pages.
     page_names = ['data/{}/page.{}'.format(testset, page_num)
-                  for page_num in range(1, NUM_TEST_PAGES+1)]
+                  for page_num in range(1, NUM_TEST_PAGES + 1)]
 
     # Load the correct labels for each test page
     true_labels = [utils.load_labels(page_name)
@@ -83,7 +83,7 @@ def evaluate(testset):
 
     # Print out the score for each test page.
     for i, score in enumerate(scores):
-        print('Page {}: score = {:3.1f}% correct'.format(i+1, score))
+        print('Page {}: score = {:3.1f}% correct'.format(i + 1, score))
 
 
 if __name__ == '__main__':
